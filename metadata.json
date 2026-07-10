@@ -1,0 +1,8 @@
+{
+  "name": "Remix: Remix: Remix: Remix: Remix: Note Android",
+  "description": "Clone identico di Note di iPhone ottimizzato per Android, con editor di testo colorato, disegno a mano libera, allegati e opzione di esportazione.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
