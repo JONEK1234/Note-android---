@@ -382,6 +382,12 @@ export default function App() {
 
   // Keyboard height tracker for soft virtual keyboard
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [visualViewportHeight, setVisualViewportHeight] = useState<number | null>(() => {
+    if (typeof window !== 'undefined' && window.visualViewport) {
+      return window.visualViewport.height;
+    }
+    return null;
+  });
 
   const addRecentTableColor = (hex: string) => {
     if (!hex) return;
@@ -631,6 +637,13 @@ export default function App() {
     const handleVisualViewportChange = () => {
       const vv = window.visualViewport;
       if (!vv) return;
+
+      setVisualViewportHeight(vv.height);
+
+      // Force layout window scroll reset to prevent iOS Safari from panning the page up
+      if (vv.offsetTop > 0) {
+        window.scrollTo(0, 0);
+      }
 
       // In modern mobile web pages, window.innerHeight represents the standard layout viewport.
       // vv.height represents the actual available visible rendering space of the screen.
@@ -3864,7 +3877,10 @@ export default function App() {
     <div className="min-h-screen bg-black text-neutral-100 flex justify-center font-sans">
       
       {/* Full-screen sleek immersive layout mimicking iPhone edge-to-edge notes experience */}
-      <div className="w-full max-w-[480px] md:border-x md:border-neutral-900 md:shadow-2xl h-screen h-[100dvh] max-h-screen overflow-hidden bg-[#000000] flex flex-col relative">
+      <div 
+        style={visualViewportHeight ? { height: `${visualViewportHeight}px`, maxHeight: `${visualViewportHeight}px` } : {}}
+        className="w-full max-w-[480px] md:border-x md:border-neutral-900 md:shadow-2xl h-screen h-[100dvh] max-h-screen overflow-hidden bg-[#000000] flex flex-col relative"
+      >
         
         {/* Launch Feedback Toast */}
         {launchFeedbackMessage && (
@@ -4650,8 +4666,8 @@ export default function App() {
 
             {/* Note text editor body container with floating toolbar tracking */}
             <div 
-              style={{ paddingBottom: `${120 + keyboardHeight}px` }}
-              className="flex-grow overflow-y-auto p-5 flex flex-col gap-4 relative transition-[padding-bottom] duration-150 ease-out"
+              style={{ paddingBottom: '160px' }}
+              className="flex-grow overflow-y-auto p-5 flex flex-col gap-4 relative"
             >
               
               <div className="text-zinc-500 font-mono text-[10px] flex items-center justify-between pb-2 border-b border-neutral-900 select-none">
@@ -4710,8 +4726,8 @@ export default function App() {
 
             {/* Bottom styling and media insert tab-bar for Note Editor */}
             <footer 
-              style={{ bottom: `${keyboardHeight}px` }}
-              className="absolute inset-x-0 bg-neutral-950/90 backdrop-blur-md border-t border-neutral-900 z-30 transition-[bottom] duration-150 ease-out"
+              style={{ bottom: '0px' }}
+              className="absolute inset-x-0 bg-neutral-950/90 backdrop-blur-md border-t border-neutral-900 z-30"
             >
               
               {/* Styling row (H1, H2, Bold, List, Clear) */}
