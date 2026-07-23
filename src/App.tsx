@@ -4,7 +4,7 @@ import {
   Settings as SettingsIcon, Globe, FileDown, Lock, Unlock, Copy, Check, 
   Play, Volume2, Type, Square, CheckSquare, Image as ImageIcon, 
   Video as VideoIcon, Mic, FileText, Palette, Sliders, Layout, RefreshCw, 
-  ArrowUp, ArrowDown, FolderSync, ZoomIn, Sparkles, Bold, Italic, Underline,
+  ArrowUp, ArrowDown, FolderSync, ZoomIn, ZoomOut, RotateCcw, Sparkles, Bold, Italic, Underline,
   Strikethrough, Link, FileJson, Calendar, Sparkle, AlignJustify, Paperclip, Home,
   Maximize, Minimize, Columns
 } from 'lucide-react';
@@ -381,7 +381,7 @@ export default function App() {
   const [downloadModalOpen, setDownloadModalOpen] = useState(false);
   const [isPackingApp, setIsPackingApp] = useState(false);
 
-  // Wide layout mode for expansive screen note viewing
+  // Wide layout mode for expansive screen note viewing (Desktop Site Mode)
   const [isWideLayout, setIsWideLayout] = useState<boolean>(() => {
     try {
       const saved = localStorage.getItem('android_notes_wide_layout');
@@ -390,6 +390,23 @@ export default function App() {
       return false;
     }
   });
+
+  // Desktop site zoom scale level and auto-fit state
+  const [windowWidth, setWindowWidth] = useState<number>(() => typeof window !== 'undefined' ? window.innerWidth : 1024);
+  const [desktopZoomScale, setDesktopZoomScale] = useState<number>(1);
+  const [autoFitDesktop, setAutoFitDesktop] = useState<boolean>(true);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowWidth(window.innerWidth);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Compute actual desktop scale factor (auto-fit or custom zoom level)
+  const calculatedAutoScale = Math.max(0.35, Math.min(1.2, (windowWidth - 8) / 1024));
+  const effectiveDesktopScale = autoFitDesktop && windowWidth < 1024 ? calculatedAutoScale : desktopZoomScale;
 
   useEffect(() => {
     try {
@@ -3962,14 +3979,86 @@ export default function App() {
     );
   };
 
+  const baseViewportH = visualViewportHeight ? `${visualViewportHeight}px` : '100dvh';
+  const isScaledDesktop = isWideLayout && effectiveDesktopScale !== 1;
+  const unscaledHeight = isScaledDesktop ? `calc(${baseViewportH} / ${effectiveDesktopScale})` : baseViewportH;
+
   return (
-    <div className="min-h-screen bg-black text-neutral-100 flex justify-center font-sans">
+    <div className={`min-h-screen h-screen h-[100dvh] bg-black text-neutral-100 flex justify-center items-start font-sans overflow-x-auto overflow-y-hidden ${isWideLayout ? 'p-0' : ''}`}>
       
-      {/* Full-screen sleek immersive layout mimicking iPhone edge-to-edge notes experience */}
+      {/* Full-screen sleek layout - Mobile 480px vs True Desktop Site 1024px Mode with Scale Zoom */}
       <div 
-        style={visualViewportHeight ? { height: `${visualViewportHeight}px`, maxHeight: `${visualViewportHeight}px` } : {}}
-        className={`w-full ${isWideLayout ? 'max-w-6xl' : 'max-w-[480px]'} md:border-x md:border-neutral-900 md:shadow-2xl h-screen h-[100dvh] max-h-screen overflow-hidden bg-[#000000] flex flex-col relative transition-[max-width] duration-300 ease-in-out`}
+        style={{
+          width: isWideLayout ? '1024px' : undefined,
+          minWidth: isWideLayout ? '1024px' : undefined,
+          maxWidth: isWideLayout ? '1024px' : undefined,
+          height: unscaledHeight,
+          maxHeight: unscaledHeight,
+          transform: isScaledDesktop ? `scale(${effectiveDesktopScale})` : undefined,
+          transformOrigin: 'top center',
+          marginBottom: isScaledDesktop ? `calc(${baseViewportH} - ${unscaledHeight})` : undefined,
+        }}
+        className={`w-full ${isWideLayout ? 'min-w-[1024px] max-w-[1024px] border border-neutral-800 shadow-2xl' : 'max-w-[480px]'} md:border-x md:border-neutral-900 md:shadow-2xl h-screen h-[100dvh] overflow-hidden bg-[#000000] flex flex-col relative transition-all duration-300 ease-in-out shrink-0`}
       >
+        
+        {/* Desktop site mode status & interactive zoom controls banner */}
+        {isWideLayout && (
+          <div className="bg-yellow-500/10 border-b border-yellow-500/20 px-3 py-1.5 flex items-center justify-between text-xs text-[#E5A93C] font-semibold shrink-0 gap-2 flex-wrap">
+            <div className="flex items-center gap-1.5">
+              <Columns className="w-4 h-4 shrink-0 text-[#E5A93C]" />
+              <span className="font-bold">🖥️ Sito Desktop (1024px)</span>
+            </div>
+
+            {/* Interactive Zoom Controls */}
+            <div className="flex items-center gap-1 bg-black/70 px-2 py-0.5 rounded-lg border border-yellow-500/30">
+              <span className="text-[11px] text-neutral-400 font-normal mr-0.5">Zoom:</span>
+              
+              <button
+                onClick={() => {
+                  setAutoFitDesktop(false);
+                  setDesktopZoomScale(prev => Math.max(0.3, parseFloat((prev - 0.1).toFixed(2))));
+                }}
+                className="p-1 hover:bg-yellow-500/20 rounded text-yellow-400 cursor-pointer transition active:scale-95"
+                title="Riduci Zoom (-)"
+              >
+                <ZoomOut className="w-3.5 h-3.5" />
+              </button>
+
+              <span className="text-xs font-mono font-bold text-yellow-400 px-1 min-w-[38px] text-center">
+                {Math.round(effectiveDesktopScale * 100)}%
+              </span>
+
+              <button
+                onClick={() => {
+                  setAutoFitDesktop(false);
+                  setDesktopZoomScale(prev => Math.min(2.0, parseFloat((prev + 0.1).toFixed(2))));
+                }}
+                className="p-1 hover:bg-yellow-500/20 rounded text-yellow-400 cursor-pointer transition active:scale-95"
+                title="Aumenta Zoom (+)"
+              >
+                <ZoomIn className="w-3.5 h-3.5" />
+              </button>
+
+              <button
+                onClick={() => {
+                  setAutoFitDesktop(true);
+                  setDesktopZoomScale(1);
+                }}
+                className={`ml-1 text-[10px] font-bold px-2 py-0.5 rounded transition cursor-pointer ${autoFitDesktop ? 'bg-yellow-500 text-black shadow-sm' : 'bg-neutral-800 text-yellow-400 hover:bg-neutral-700'}`}
+                title="Adatta alla larghezza dello schermo"
+              >
+                {autoFitDesktop ? 'Adattato' : 'Adatta'}
+              </button>
+            </div>
+
+            <button 
+              onClick={() => setIsWideLayout(false)}
+              className="text-[11px] hover:text-yellow-400 cursor-pointer font-bold px-2 py-0.5 rounded bg-yellow-500/10 hover:bg-yellow-500/20 text-[#E5A93C] transition border border-yellow-500/20"
+            >
+              Passa a Mobile (480px)
+            </button>
+          </div>
+        )}
         
         {/* Launch Feedback Toast */}
         {launchFeedbackMessage && (
@@ -4005,11 +4094,11 @@ export default function App() {
                 <button 
                   id="wide-layout-toggle-btn-folders"
                   onClick={() => setIsWideLayout(prev => !prev)}
-                  className={`p-2 rounded-full transition cursor-pointer flex items-center gap-1.5 ${isWideLayout ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30' : 'bg-neutral-900 hover:bg-neutral-800 text-neutral-400'}`}
-                  title={isWideLayout ? "Vista Compatta (480px)" : "Vista Ampia (Schermo Intero)"}
+                  className={`p-2 rounded-xl transition cursor-pointer flex items-center gap-1.5 ${isWideLayout ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/40' : 'bg-neutral-900 hover:bg-neutral-800 text-neutral-400'}`}
+                  title={isWideLayout ? "Disattiva Sito Desktop (Torna a Vista Mobile 480px)" : "Attiva Modalità Sito Desktop (1024px)"}
                 >
                   <Columns className="w-5 h-5 text-[#E5A93C]" />
-                  <span className="text-xs font-bold text-[#E5A93C] hidden sm:inline">{isWideLayout ? "Compatta" : "Vista Ampia"}</span>
+                  <span className="text-xs font-bold text-[#E5A93C] hidden sm:inline">{isWideLayout ? "Vista Mobile" : "Sito Desktop"}</span>
                 </button>
 
                 <button 
@@ -4356,11 +4445,11 @@ export default function App() {
                 <button 
                   id="wide-layout-toggle-btn-notes"
                   onClick={() => setIsWideLayout(prev => !prev)}
-                  className={`p-1.5 rounded-lg transition cursor-pointer flex items-center gap-1 ${isWideLayout ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30' : 'bg-neutral-900 hover:bg-neutral-800 text-neutral-400'}`}
-                  title={isWideLayout ? "Vista Compatta" : "Vista Ampia"}
+                  className={`p-1.5 rounded-lg transition cursor-pointer flex items-center gap-1 ${isWideLayout ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/40' : 'bg-neutral-900 hover:bg-neutral-800 text-neutral-400'}`}
+                  title={isWideLayout ? "Disattiva Sito Desktop (Torna a Vista Mobile 480px)" : "Attiva Modalità Sito Desktop (1024px)"}
                 >
                   <Columns className="w-4 h-4 text-[#E5A93C]" />
-                  <span className="text-[11px] font-bold text-[#E5A93C] hidden sm:inline">{isWideLayout ? "Compatta" : "Vista Ampia"}</span>
+                  <span className="text-[11px] font-bold text-[#E5A93C] hidden sm:inline">{isWideLayout ? "Vista Mobile" : "Sito Desktop"}</span>
                 </button>
 
                 <button 
@@ -4674,11 +4763,11 @@ export default function App() {
                 <button
                   id="note-wide-layout-toggle-btn"
                   onClick={() => setIsWideLayout(prev => !prev)}
-                  className={`p-1.5 rounded-lg transition cursor-pointer flex items-center gap-1 ${isWideLayout ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30' : 'text-neutral-400 hover:bg-neutral-900 hover:text-white'}`}
-                  title={isWideLayout ? "Vista Compatta (480px)" : "Vista Ampia (Schermo Intero)"}
+                  className={`p-1.5 rounded-lg transition cursor-pointer flex items-center gap-1 ${isWideLayout ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/40' : 'text-neutral-400 hover:bg-neutral-900 hover:text-white'}`}
+                  title={isWideLayout ? "Disattiva Sito Desktop (Torna a Vista Mobile 480px)" : "Attiva Modalità Sito Desktop (1024px)"}
                 >
                   <Columns className="w-4 h-4 text-[#E5A93C]" />
-                  <span className="text-xs font-bold text-[#E5A93C] hidden sm:inline">{isWideLayout ? "Compatta" : "Vista Ampia"}</span>
+                  <span className="text-xs font-bold text-[#E5A93C] hidden sm:inline">{isWideLayout ? "Vista Mobile" : "Sito Desktop"}</span>
                 </button>
 
                 <button
