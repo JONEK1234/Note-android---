@@ -6,7 +6,7 @@ import {
   Video as VideoIcon, Mic, FileText, Palette, Sliders, Layout, RefreshCw, 
   ArrowUp, ArrowDown, FolderSync, ZoomIn, Sparkles, Bold, Italic, Underline,
   Strikethrough, Link, FileJson, Calendar, Sparkle, AlignJustify, Paperclip, Home,
-  Maximize, Minimize
+  Maximize, Minimize, Columns
 } from 'lucide-react';
 import { Note, Folder, AppSettings, Attachment } from './types';
 import DrawingCanvas from './components/DrawingCanvas';
@@ -380,6 +380,22 @@ export default function App() {
   // Download whole app offline modal and packing state
   const [downloadModalOpen, setDownloadModalOpen] = useState(false);
   const [isPackingApp, setIsPackingApp] = useState(false);
+
+  // Wide layout mode for expansive screen note viewing
+  const [isWideLayout, setIsWideLayout] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('android_notes_wide_layout');
+      return saved ? JSON.parse(saved) : false;
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('android_notes_wide_layout', JSON.stringify(isWideLayout));
+    } catch {}
+  }, [isWideLayout]);
 
   // Keyboard height tracker for soft virtual keyboard
   const [keyboardHeight, setKeyboardHeight] = useState(0);
@@ -3952,7 +3968,7 @@ export default function App() {
       {/* Full-screen sleek immersive layout mimicking iPhone edge-to-edge notes experience */}
       <div 
         style={visualViewportHeight ? { height: `${visualViewportHeight}px`, maxHeight: `${visualViewportHeight}px` } : {}}
-        className="w-full max-w-[480px] md:border-x md:border-neutral-900 md:shadow-2xl h-screen h-[100dvh] max-h-screen overflow-hidden bg-[#000000] flex flex-col relative"
+        className={`w-full ${isWideLayout ? 'max-w-6xl' : 'max-w-[480px]'} md:border-x md:border-neutral-900 md:shadow-2xl h-screen h-[100dvh] max-h-screen overflow-hidden bg-[#000000] flex flex-col relative transition-[max-width] duration-300 ease-in-out`}
       >
         
         {/* Launch Feedback Toast */}
@@ -3986,6 +4002,16 @@ export default function App() {
               </h1>
               
               <div className="flex items-center gap-2">
+                <button 
+                  id="wide-layout-toggle-btn-folders"
+                  onClick={() => setIsWideLayout(prev => !prev)}
+                  className={`p-2 rounded-full transition cursor-pointer flex items-center gap-1.5 ${isWideLayout ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30' : 'bg-neutral-900 hover:bg-neutral-800 text-neutral-400'}`}
+                  title={isWideLayout ? "Vista Compatta (480px)" : "Vista Ampia (Schermo Intero)"}
+                >
+                  <Columns className="w-5 h-5 text-[#E5A93C]" />
+                  <span className="text-xs font-bold text-[#E5A93C] hidden sm:inline">{isWideLayout ? "Compatta" : "Vista Ampia"}</span>
+                </button>
+
                 <button 
                   id="fullscreen-toggle-btn"
                   onClick={toggleFullscreen}
@@ -4326,14 +4352,26 @@ export default function App() {
                 )}
               </div>
 
-              <button 
-                id="add-note-btn-list"
-                onClick={handleCreateNote}
-                className="p-1.5 bg-yellow-500 hover:bg-yellow-600 text-neutral-900 rounded-lg transition shrink-0"
-                title={t.createNote}
-              >
-                <Plus className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button 
+                  id="wide-layout-toggle-btn-notes"
+                  onClick={() => setIsWideLayout(prev => !prev)}
+                  className={`p-1.5 rounded-lg transition cursor-pointer flex items-center gap-1 ${isWideLayout ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30' : 'bg-neutral-900 hover:bg-neutral-800 text-neutral-400'}`}
+                  title={isWideLayout ? "Vista Compatta" : "Vista Ampia"}
+                >
+                  <Columns className="w-4 h-4 text-[#E5A93C]" />
+                  <span className="text-[11px] font-bold text-[#E5A93C] hidden sm:inline">{isWideLayout ? "Compatta" : "Vista Ampia"}</span>
+                </button>
+
+                <button 
+                  id="add-note-btn-list"
+                  onClick={handleCreateNote}
+                  className="p-1.5 bg-yellow-500 hover:bg-yellow-600 text-neutral-900 rounded-lg transition shrink-0"
+                  title={t.createNote}
+                >
+                  <Plus className="w-5 h-5" />
+                </button>
+              </div>
             </header>
 
             {/* Quick folder search input */}
@@ -4633,6 +4671,16 @@ export default function App() {
 
               {/* Note features context actions */}
               <div className="flex items-center gap-1.5">
+                <button
+                  id="note-wide-layout-toggle-btn"
+                  onClick={() => setIsWideLayout(prev => !prev)}
+                  className={`p-1.5 rounded-lg transition cursor-pointer flex items-center gap-1 ${isWideLayout ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30' : 'text-neutral-400 hover:bg-neutral-900 hover:text-white'}`}
+                  title={isWideLayout ? "Vista Compatta (480px)" : "Vista Ampia (Schermo Intero)"}
+                >
+                  <Columns className="w-4 h-4 text-[#E5A93C]" />
+                  <span className="text-xs font-bold text-[#E5A93C] hidden sm:inline">{isWideLayout ? "Compatta" : "Vista Ampia"}</span>
+                </button>
+
                 <button
                   id="note-fullscreen-toggle-btn"
                   onClick={toggleFullscreen}
