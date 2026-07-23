@@ -5,7 +5,8 @@ import {
   Play, Volume2, Type, Square, CheckSquare, Image as ImageIcon, 
   Video as VideoIcon, Mic, FileText, Palette, Sliders, Layout, RefreshCw, 
   ArrowUp, ArrowDown, FolderSync, ZoomIn, Sparkles, Bold, Italic, Underline,
-  Strikethrough, Link, FileJson, Calendar, Sparkle, AlignJustify, Paperclip, Home
+  Strikethrough, Link, FileJson, Calendar, Sparkle, AlignJustify, Paperclip, Home,
+  Maximize, Minimize
 } from 'lucide-react';
 import { Note, Folder, AppSettings, Attachment } from './types';
 import DrawingCanvas from './components/DrawingCanvas';
@@ -666,6 +667,37 @@ export default function App() {
       window.visualViewport?.removeEventListener('scroll', handleVisualViewportChange);
     };
   }, []);
+
+  // Fullscreen state and handler
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    const handleFSChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFSChange);
+    document.addEventListener('webkitfullscreenchange', handleFSChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFSChange);
+      document.removeEventListener('webkitfullscreenchange', handleFSChange);
+    };
+  }, []);
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      const docEl = document.documentElement as any;
+      const requestFS = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.mozRequestFullScreen || docEl.msRequestFullscreen;
+      if (requestFS) {
+        requestFS.call(docEl).then(() => setIsFullscreen(true)).catch(() => {});
+      }
+    } else {
+      const doc = document as any;
+      const exitFS = doc.exitFullscreen || doc.webkitExitFullscreen || doc.mozCancelFullScreen || doc.msExitFullscreen;
+      if (exitFS) {
+        exitFS.call(doc).then(() => setIsFullscreen(false)).catch(() => {});
+      }
+    }
+  };
 
   // Request fullscreen mode automatically when entering the site or on first interaction
   useEffect(() => {
@@ -3953,14 +3985,25 @@ export default function App() {
                 </button>
               </h1>
               
-              <button 
-                id="settings-nav-btn"
-                onClick={() => setCurrentView('settings')}
-                className="p-2 rounded-full bg-neutral-900 hover:bg-neutral-800 text-neutral-400 transition"
-                title={t.settings}
-              >
-                <SettingsIcon className="w-5 h-5 text-[#E5A93C]" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button 
+                  id="fullscreen-toggle-btn"
+                  onClick={toggleFullscreen}
+                  className="p-2 rounded-full bg-neutral-900 hover:bg-neutral-800 text-neutral-400 transition cursor-pointer"
+                  title={isFullscreen ? "Esci da Schermo Intero" : "Schermo Intero"}
+                >
+                  {isFullscreen ? <Minimize className="w-5 h-5 text-[#E5A93C]" /> : <Maximize className="w-5 h-5 text-[#E5A93C]" />}
+                </button>
+
+                <button 
+                  id="settings-nav-btn"
+                  onClick={() => setCurrentView('settings')}
+                  className="p-2 rounded-full bg-neutral-900 hover:bg-neutral-800 text-neutral-400 transition"
+                  title={t.settings}
+                >
+                  <SettingsIcon className="w-5 h-5 text-[#E5A93C]" />
+                </button>
+              </div>
             </header>
 
             {/* Global Search across folders */}
@@ -4590,6 +4633,15 @@ export default function App() {
 
               {/* Note features context actions */}
               <div className="flex items-center gap-1.5">
+                <button
+                  id="note-fullscreen-toggle-btn"
+                  onClick={toggleFullscreen}
+                  className="p-1.5 rounded-lg text-neutral-400 hover:bg-neutral-900 hover:text-white transition cursor-pointer"
+                  title={isFullscreen ? "Esci da Schermo Intero" : "Schermo Intero"}
+                >
+                  {isFullscreen ? <Minimize className="w-4 h-4 text-[#E5A93C]" /> : <Maximize className="w-4 h-4 text-[#E5A93C]" />}
+                </button>
+
                 <button 
                   id="note-pin-toggle-btn"
                   onClick={() => handleToggleNotePin(activeNote.id)}
