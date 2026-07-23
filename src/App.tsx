@@ -667,6 +667,35 @@ export default function App() {
     };
   }, []);
 
+  // Request fullscreen mode automatically when entering the site or on first interaction
+  useEffect(() => {
+    const enterFullscreen = () => {
+      if (!document.fullscreenElement) {
+        const docEl = document.documentElement as any;
+        const requestFS = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.mozRequestFullScreen || docEl.msRequestFullscreen;
+        if (requestFS) {
+          requestFS.call(docEl).catch(() => {});
+        }
+      }
+    };
+
+    enterFullscreen();
+
+    const handleFirstInteraction = () => {
+      enterFullscreen();
+      window.removeEventListener('click', handleFirstInteraction);
+      window.removeEventListener('touchstart', handleFirstInteraction);
+    };
+
+    window.addEventListener('click', handleFirstInteraction);
+    window.addEventListener('touchstart', handleFirstInteraction);
+
+    return () => {
+      window.removeEventListener('click', handleFirstInteraction);
+      window.removeEventListener('touchstart', handleFirstInteraction);
+    };
+  }, []);
+
   // Synchronize editor innerHTML safely without destroying cursors
   const lastLoadedNoteIdRef = useRef<string | null>(null);
 
@@ -1959,8 +1988,8 @@ export default function App() {
     setIsNewFolderModalOpen(false);
   };
 
-  const handleDeleteFolder = (folderId: string, event: React.MouseEvent) => {
-    event.stopPropagation();
+  const handleDeleteFolder = (folderId: string, event?: React.MouseEvent | React.TouchEvent) => {
+    if (event) event.stopPropagation();
     const folder = folders.find(f => f.id === folderId);
     if (folder?.isSystem) {
       alert(t.cantDeleteAll);
@@ -1975,11 +2004,23 @@ export default function App() {
       cancelText: settings.language === 'it' ? 'Annulla' : 'Cancel',
       isDestructive: true,
       onConfirm: () => {
-        setFolders(prev => prev.filter(f => f.id !== folderId));
-        // Delete notes inside folder
-        setNotes(prev => prev.filter(n => n.folderId !== folderId));
+        // Remove target folder and any nested subfolders
+        const getFolderAndSubfolderIds = (id: string): string[] => {
+          const children = folders.filter(f => f.parentId === id);
+          let ids = [id];
+          children.forEach(c => {
+            ids = [...ids, ...getFolderAndSubfolderIds(c.id)];
+          });
+          return ids;
+        };
+
+        const idsToRemove = getFolderAndSubfolderIds(folderId);
+
+        setFolders(prev => prev.filter(f => !idsToRemove.includes(f.id)));
+        // Delete notes inside folder and subfolders
+        setNotes(prev => prev.filter(n => !n.folderId || !idsToRemove.includes(n.folderId)));
         
-        if (selectedFolderId === folderId) {
+        if (selectedFolderId && idsToRemove.includes(selectedFolderId)) {
           setSelectedFolderId(null);
           setCurrentView('folders');
         }
@@ -5585,17 +5626,35 @@ export default function App() {
           <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm" id="move-note-folder-modal">
             <div className="bg-neutral-900 border border-neutral-800 rounded-2xl w-full max-w-xs p-5 space-y-3.5 animate-in fade-in zoom-in-95 duration-100">
               <h3 className="font-bold text-sm text-white">{t.moveNoteTo}</h3>
-              <div className="max-h-52 overflow-y-auto divide-y divide-neutral-850 border border-neutral-800 rounded-xl overflow-hidden">
-                {folders.filter(f => !f.isSystem).map(fol => (
-                  <button 
-                    key={fol.id}
-                    id={`move-target-folder-${fol.id}`}
-                    onClick={() => handleExecuteMoveNote(fol.id)}
-                    className="w-full text-left p-3 text-xs bg-neutral-950 hover:bg-neutral-900 text-neutral-300 font-medium transition block truncate"
-                  >
-                    📂 {fol.name}
-                  </button>
-                ))}
+              <div className="max-h-56 overflow-y-auto divide-y divide-neutral-850 border border-neutral-800 rounded-xl overflow-hidden">
+                {folders.filter(f => !f.isSystem).length === 0 ? (
+                  <div className="p-4 text-center text-xs text-neutral-500 italic">
+                    Nessuna cartella disponibile
+                  </div>
+                ) : (
+                  folders.filter(f => !f.isSystem).map(fol => (
+                    <div 
+                      key={fol.id}
+                      className="flex items-center justify-between p-2.5 bg-neutral-950 hover:bg-neutral-900 transition group"
+                    >
+                      <button 
+                        id={`move-target-folder-${fol.id}`}
+                        onClick={() => handleExecuteMoveNote(fol.id)}
+                        className="flex-1 text-left text-xs text-neutral-300 font-medium truncate flex items-center gap-2"
+                      >
+                        <span className="shrink-0">📂</span>
+                        <span className="truncate">{fol.name}</span>
+                      </button>
+                      <button
+                        onClick={(e) => handleDeleteFolder(fol.id, e)}
+                        className="p-1.5 text-neutral-500 hover:text-red-500 hover:bg-neutral-800 rounded-lg transition shrink-0 ml-1.5 cursor-pointer"
+                        title={t.delete}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))
+                )}
               </div>
 
               <button 
